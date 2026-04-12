@@ -1,0 +1,37 @@
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend
+backend/target/
+backend/.m2-repo/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Codex / local workspace history
+.claude/
+.history/
+
+# Local Maven cache
+.m2/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+*.pdb
+logs/
+runtime/
+
+# Runtime
+temp/run-logs/*.pid
+
+# User uploads should stay out of Git, but keep the folder itself.
+uploads/*
+!uploads/.gitkeep

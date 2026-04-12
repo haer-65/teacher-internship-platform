@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: internship-platform-backend
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+knife4j:
+  enable: true
+  setting:
+    language: zh-CN
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:ReplaceThisWithAtLeast32CharactersSecretKey!}
+    expiration-seconds: ${JWT_EXPIRE_SECONDS:7200}
+  file-storage:
+    root-path: ${FILE_STORAGE_ROOT:D:/teacher-internship-platform/uploads}
+    max-file-size-mb: ${FILE_MAX_SIZE_MB:20}
+  notice:
+    deadline-reminder-days: ${NOTICE_DEADLINE_REMINDER_DAYS:3}
+    deadline-reminder-cron: ${NOTICE_DEADLINE_REMINDER_CRON:0 0 8 * * ?}
+    email-enabled: ${NOTICE_EMAIL_ENABLED:false}
+    email-from: ${NOTICE_EMAIL_FROM:no-reply@internship.local}
+  bootstrap:
+    enabled: ${APP_BOOTSTRAP_ENABLED:true}
+    script-location-pattern: ${APP_BOOTSTRAP_SCRIPT_LOCATION:classpath:/db/bootstrap/V*__*.sql}
