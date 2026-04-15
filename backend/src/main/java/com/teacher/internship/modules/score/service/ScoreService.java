@@ -33,6 +33,7 @@ import com.teacher.internship.modules.system.entity.SysOperationLog;
 import com.teacher.internship.modules.system.entity.SysUser;
 import com.teacher.internship.modules.system.mapper.SysOperationLogMapper;
 import com.teacher.internship.modules.system.mapper.SysUserMapper;
+import com.teacher.internship.modules.system.service.SystemParamService;
 import com.teacher.internship.modules.system.vo.IdNameOptionVO;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -89,6 +90,8 @@ public class ScoreService {
     private static final String PLAN_STATUS_FINISHED = "FINISHED";
     private static final String PLAN_STATUS_ARCHIVED = "ARCHIVED";
     private static final String TYPE_FINAL = "FINAL";
+    private static final String PARAM_SCORE_DECIMAL_SCALE = "SCORE_DECIMAL_SCALE";
+    private static final int DEFAULT_SCORE_SCALE = 2;
 
     private static final BigDecimal HUNDRED = new BigDecimal("100");
     private static final List<String> CHINESE_FONT_CANDIDATES = List.of(
@@ -109,6 +112,7 @@ public class ScoreService {
     private final ScoreCalculationService scoreCalculationService;
     private final ObjectMapper objectMapper;
     private final NoticeTriggerService noticeTriggerService;
+    private final SystemParamService paramService;
 
     public ScoreService(BizScoreSheetMapper scoreSheetMapper,
                         BizInternshipPlanMapper planMapper,
@@ -121,7 +125,8 @@ public class ScoreService {
                         SysOperationLogMapper operationLogMapper,
                         ScoreCalculationService scoreCalculationService,
                         ObjectMapper objectMapper,
-                        NoticeTriggerService noticeTriggerService) {
+                        NoticeTriggerService noticeTriggerService,
+                        SystemParamService paramService) {
         this.scoreSheetMapper = scoreSheetMapper;
         this.planMapper = planMapper;
         this.assignmentMapper = assignmentMapper;
@@ -134,6 +139,7 @@ public class ScoreService {
         this.scoreCalculationService = scoreCalculationService;
         this.objectMapper = objectMapper;
         this.noticeTriggerService = noticeTriggerService;
+        this.paramService = paramService;
     }
 
     public ScorePageVO queryScorePage(long page,
@@ -1395,7 +1401,7 @@ public class ScoreService {
         if (score == null) {
             return null;
         }
-        return score.setScale(2, RoundingMode.HALF_UP);
+        return score.setScale(resolveScoreScale(), RoundingMode.HALF_UP);
     }
 
     private Set<Long> singletonSet(Long id) {
@@ -1426,7 +1432,15 @@ public class ScoreService {
     }
 
     private String toPlain(BigDecimal value) {
-        return value == null ? "0.00" : normalizeScore(value).toPlainString();
+        if (value == null) {
+            return BigDecimal.ZERO.setScale(resolveScoreScale(), RoundingMode.HALF_UP).toPlainString();
+        }
+        return normalizeScore(value).toPlainString();
+    }
+
+    private int resolveScoreScale() {
+        int configuredScale = paramService.getIntValue(PARAM_SCORE_DECIMAL_SCALE, DEFAULT_SCORE_SCALE);
+        return Math.max(configuredScale, 0);
     }
 }
 

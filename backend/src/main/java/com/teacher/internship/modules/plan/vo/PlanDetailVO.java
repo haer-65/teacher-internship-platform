@@ -26,6 +26,7 @@ public class PlanDetailVO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime applyDeadline;
     private Integer studentQuota;
+    private Integer remainingQuota;
     private String description;
     private BigDecimal innerTeacherWeight;
     private BigDecimal baseTeacherWeight;
@@ -125,6 +126,14 @@ public class PlanDetailVO {
 
     public void setStudentQuota(Integer studentQuota) {
         this.studentQuota = studentQuota;
+    }
+
+    public Integer getRemainingQuota() {
+        return remainingQuota;
+    }
+
+    public void setRemainingQuota(Integer remainingQuota) {
+        this.remainingQuota = remainingQuota;
     }
 
     public String getDescription() {

@@ -77,6 +77,7 @@ public class MaterialService {
     private static final String STATUS_NOT_SUBMITTED = "NOT_SUBMITTED";
     private static final String STATUS_SUBMITTED = "SUBMITTED";
     private static final String STATUS_OVERDUE = "OVERDUE";
+    private static final String PLAN_STATUS_ARCHIVED = "ARCHIVED";
 
     private static final int DEFAULT_PAGE_SIZE = 10;
     private static final int MAX_PAGE_SIZE = 200;
@@ -212,6 +213,7 @@ public class MaterialService {
 
         BizAssignment assignment = requireAssignment(material.getAssignmentId());
         BizInternshipPlan plan = requirePlan(assignment.getPlanId());
+        ensurePlanNotArchivedForSubmission(plan);
         if (assignment.getIsCurrent() == null || assignment.getIsCurrent() != 1) {
             throw new BusinessException(ApiCode.BAD_REQUEST.getCode(), "只有当前分配版本才支持提交材料");
         }
@@ -360,6 +362,7 @@ public class MaterialService {
         BizMaterial material = requireMaterial(request.getMaterialId());
         BizAssignment assignment = requireAssignment(material.getAssignmentId());
         BizInternshipPlan plan = requirePlan(assignment.getPlanId());
+        ensurePlanNotArchivedForSubmission(plan);
 
         SysUser operator = requireUser(userId);
         ensureAdminManageAccess(plan, operator, normalizeCode(roleCode));
@@ -636,7 +639,7 @@ public class MaterialService {
 
             boolean canSubmit = ROLE_STUDENT.equals(roleCode)
                     && Objects.equals(material.getStudentId(), operator.getId())
-                    && canSubmitByRule(material, materialType, lateOpen, now);
+                    && canSubmitByRule(plan, material, materialType, lateOpen, now);
             item.setCanSubmit(canSubmit);
 
             BizMaterialVersion latestVersion = currentVersionMap.get(material.getId());
@@ -789,10 +792,14 @@ public class MaterialService {
         return String.valueOf(assignmentId) + "_" + materialTypeId;
     }
 
-    private boolean canSubmitByRule(BizMaterial material,
+    private boolean canSubmitByRule(BizInternshipPlan plan,
+                                    BizMaterial material,
                                     BizMaterialType materialType,
                                     boolean lateSubmitOpen,
                                     LocalDateTime now) {
+        if (isPlanArchived(plan)) {
+            return false;
+        }
         int maxCount = materialType.getMaxSubmitCount() == null || materialType.getMaxSubmitCount() <= 0
                 ? 1
                 : materialType.getMaxSubmitCount();
@@ -806,6 +813,16 @@ public class MaterialService {
             return true;
         }
         return !now.isAfter(deadline) || lateSubmitOpen;
+    }
+
+    private void ensurePlanNotArchivedForSubmission(BizInternshipPlan plan) {
+        if (isPlanArchived(plan)) {
+            throw new BusinessException(ApiCode.BAD_REQUEST.getCode(), "已归档计划不允许补交");
+        }
+    }
+
+    private boolean isPlanArchived(BizInternshipPlan plan) {
+        return plan != null && PLAN_STATUS_ARCHIVED.equals(normalizeCode(plan.getPlanStatus()));
     }
 
     private ResponseEntity<Resource> buildFileResponse(BizMaterialVersion version, boolean inline) {

@@ -170,7 +170,6 @@ public class NoticeTriggerService {
         try {
             Set<Long> receiverIds = new HashSet<>();
             receiverIds.addAll(noticeService.queryEnabledUserIdsByRole(ROLE_DEPT_ADMIN, plan == null ? null : plan.getDeptId()));
-            receiverIds.addAll(noticeService.queryEnabledUserIdsByRole(ROLE_SYS_ADMIN, null));
             if (CollectionUtils.isEmpty(receiverIds)) {
                 return;
             }
@@ -189,7 +188,7 @@ public class NoticeTriggerService {
                     title,
                     content,
                     student == null ? null : student.getId(),
-                    null,
+                    ROLE_DEPT_ADMIN,
                     BIZ_TYPE_APPLICATION_SUBMITTED,
                     application.getId(),
                     receiverIds,

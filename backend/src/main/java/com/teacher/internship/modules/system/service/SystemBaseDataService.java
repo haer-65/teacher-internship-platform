@@ -201,9 +201,11 @@ public class SystemBaseDataService {
     public BaseDepartmentItemVO createDepartment(BaseDepartmentSaveRequest request, Long operatorId) {
         String code = resolveDepartmentCode(request.getDeptCode());
         ensureDepartmentCodeUnique(code, null);
+        String deptName = trimText(request.getDeptName());
+        ensureDepartmentNameUnique(deptName, null);
         BaseDepartment entity = new BaseDepartment();
         entity.setDeptCode(code);
-        entity.setDeptName(trimText(request.getDeptName()));
+        entity.setDeptName(deptName);
         entity.setParentId(request.getParentId() == null ? 0L : request.getParentId());
         entity.setLeaderName(trimText(request.getLeaderName()));
         entity.setContactPhone(trimText(request.getContactPhone()));
@@ -220,8 +222,10 @@ public class SystemBaseDataService {
         BaseDepartment entity = requireDepartment(id);
         String code = resolveDepartmentCodeForUpdate(request.getDeptCode(), entity.getDeptCode());
         ensureDepartmentCodeUnique(code, id);
+        String deptName = trimText(request.getDeptName());
+        ensureDepartmentNameUnique(deptName, id);
         entity.setDeptCode(code);
-        entity.setDeptName(trimText(request.getDeptName()));
+        entity.setDeptName(deptName);
         entity.setParentId(request.getParentId() == null ? 0L : request.getParentId());
         entity.setLeaderName(trimText(request.getLeaderName()));
         entity.setContactPhone(trimText(request.getContactPhone()));
@@ -259,11 +263,13 @@ public class SystemBaseDataService {
     public BaseMajorItemVO createMajor(BaseMajorSaveRequest request, Long operatorId) {
         String code = resolveMajorCode(request.getMajorCode());
         ensureMajorCodeUnique(code, null);
+        String majorName = trimText(request.getMajorName());
+        ensureMajorNameUnique(majorName, null);
         BaseDepartment department = requireDepartment(request.getDeptId());
         BaseMajor entity = new BaseMajor();
         entity.setDeptId(department.getId());
         entity.setMajorCode(code);
-        entity.setMajorName(trimText(request.getMajorName()));
+        entity.setMajorName(majorName);
         entity.setStatus(STATUS_ENABLED);
         entity.setCreatedBy(operatorId);
         entity.setUpdatedBy(operatorId);
@@ -277,10 +283,12 @@ public class SystemBaseDataService {
         BaseMajor entity = requireMajor(id);
         String code = resolveMajorCodeForUpdate(request.getMajorCode(), entity.getMajorCode());
         ensureMajorCodeUnique(code, id);
+        String majorName = trimText(request.getMajorName());
+        ensureMajorNameUnique(majorName, id);
         BaseDepartment department = requireDepartment(request.getDeptId());
         entity.setDeptId(department.getId());
         entity.setMajorCode(code);
-        entity.setMajorName(trimText(request.getMajorName()));
+        entity.setMajorName(majorName);
         entity.setUpdatedBy(operatorId);
         entity.setUpdatedTime(LocalDateTime.now());
         majorMapper.updateById(entity);
@@ -316,9 +324,11 @@ public class SystemBaseDataService {
     public BaseGradeItemVO createGrade(BaseGradeSaveRequest request, Long operatorId) {
         String code = resolveGradeCode(request.getGradeCode(), request.getGradeName());
         ensureGradeCodeUnique(code, null);
+        String gradeName = trimText(request.getGradeName());
+        ensureGradeNameUnique(gradeName, null);
         BaseGrade entity = new BaseGrade();
         entity.setGradeCode(code);
-        entity.setGradeName(trimText(request.getGradeName()));
+        entity.setGradeName(gradeName);
         entity.setStatus(STATUS_ENABLED);
         entity.setCreatedBy(operatorId);
         entity.setUpdatedBy(operatorId);
@@ -332,8 +342,10 @@ public class SystemBaseDataService {
         BaseGrade entity = requireGrade(id);
         String code = resolveGradeCodeForUpdate(request.getGradeCode(), request.getGradeName(), entity.getGradeCode());
         ensureGradeCodeUnique(code, id);
+        String gradeName = trimText(request.getGradeName());
+        ensureGradeNameUnique(gradeName, id);
         entity.setGradeCode(code);
-        entity.setGradeName(trimText(request.getGradeName()));
+        entity.setGradeName(gradeName);
         entity.setUpdatedBy(operatorId);
         entity.setUpdatedTime(LocalDateTime.now());
         gradeMapper.updateById(entity);
@@ -368,9 +380,11 @@ public class SystemBaseDataService {
     public BaseInternshipBaseItemVO createInternshipBase(BaseInternshipBaseSaveRequest request, Long operatorId) {
         String code = resolveInternshipBaseCode(request.getBaseCode());
         ensureInternshipBaseCodeUnique(code, null);
+        String baseName = trimText(request.getBaseName());
+        ensureInternshipBaseNameUnique(baseName, null);
         BaseInternshipBase entity = new BaseInternshipBase();
         entity.setBaseCode(code);
-        entity.setBaseName(trimText(request.getBaseName()));
+        entity.setBaseName(baseName);
         entity.setProvince(trimText(request.getProvince()));
         entity.setCity(trimText(request.getCity()));
         entity.setDistrict(trimText(request.getDistrict()));
@@ -390,8 +404,10 @@ public class SystemBaseDataService {
         BaseInternshipBase entity = requireInternshipBase(id);
         String code = resolveInternshipBaseCodeForUpdate(request.getBaseCode(), entity.getBaseCode());
         ensureInternshipBaseCodeUnique(code, id);
+        String baseName = trimText(request.getBaseName());
+        ensureInternshipBaseNameUnique(baseName, id);
         entity.setBaseCode(code);
-        entity.setBaseName(trimText(request.getBaseName()));
+        entity.setBaseName(baseName);
         entity.setProvince(trimText(request.getProvince()));
         entity.setCity(trimText(request.getCity()));
         entity.setDistrict(trimText(request.getDistrict()));
@@ -617,6 +633,16 @@ public class SystemBaseDataService {
         }
     }
 
+    private void ensureDepartmentNameUnique(String deptName, Long excludeId) {
+        BaseDepartment existing = departmentMapper.selectOne(new LambdaQueryWrapper<BaseDepartment>()
+                .eq(BaseDepartment::getDeptName, deptName)
+                .eq(BaseDepartment::getDeleted, 0L)
+                .last("LIMIT 1"));
+        if (existing != null && !Objects.equals(existing.getId(), excludeId)) {
+            throw new BusinessException(ApiCode.BAD_REQUEST.getCode(), "院系名称已存在");
+        }
+    }
+
     private void ensureMajorCodeUnique(String code, Long excludeId) {
         BaseMajor existing = majorMapper.selectOne(new LambdaQueryWrapper<BaseMajor>()
                 .eq(BaseMajor::getMajorCode, code)
@@ -624,6 +650,16 @@ public class SystemBaseDataService {
                 .last("LIMIT 1"));
         if (existing != null && !Objects.equals(existing.getId(), excludeId)) {
             throw new BusinessException(ApiCode.BAD_REQUEST.getCode(), "专业编码已存在");
+        }
+    }
+
+    private void ensureMajorNameUnique(String majorName, Long excludeId) {
+        BaseMajor existing = majorMapper.selectOne(new LambdaQueryWrapper<BaseMajor>()
+                .eq(BaseMajor::getMajorName, majorName)
+                .eq(BaseMajor::getDeleted, 0L)
+                .last("LIMIT 1"));
+        if (existing != null && !Objects.equals(existing.getId(), excludeId)) {
+            throw new BusinessException(ApiCode.BAD_REQUEST.getCode(), "专业名称已存在");
         }
     }
 
@@ -637,6 +673,16 @@ public class SystemBaseDataService {
         }
     }
 
+    private void ensureGradeNameUnique(String gradeName, Long excludeId) {
+        BaseGrade existing = gradeMapper.selectOne(new LambdaQueryWrapper<BaseGrade>()
+                .eq(BaseGrade::getGradeName, gradeName)
+                .eq(BaseGrade::getDeleted, 0L)
+                .last("LIMIT 1"));
+        if (existing != null && !Objects.equals(existing.getId(), excludeId)) {
+            throw new BusinessException(ApiCode.BAD_REQUEST.getCode(), "年级名称已存在");
+        }
+    }
+
     private void ensureInternshipBaseCodeUnique(String code, Long excludeId) {
         BaseInternshipBase existing = internshipBaseMapper.selectOne(new LambdaQueryWrapper<BaseInternshipBase>()
                 .eq(BaseInternshipBase::getBaseCode, code)
@@ -644,6 +690,16 @@ public class SystemBaseDataService {
                 .last("LIMIT 1"));
         if (existing != null && !Objects.equals(existing.getId(), excludeId)) {
             throw new BusinessException(ApiCode.BAD_REQUEST.getCode(), "实习基地编码已存在");
+        }
+    }
+
+    private void ensureInternshipBaseNameUnique(String baseName, Long excludeId) {
+        BaseInternshipBase existing = internshipBaseMapper.selectOne(new LambdaQueryWrapper<BaseInternshipBase>()
+                .eq(BaseInternshipBase::getBaseName, baseName)
+                .eq(BaseInternshipBase::getDeleted, 0L)
+                .last("LIMIT 1"));
+        if (existing != null && !Objects.equals(existing.getId(), excludeId)) {
+            throw new BusinessException(ApiCode.BAD_REQUEST.getCode(), "实习基地名称已存在");
         }
     }
 

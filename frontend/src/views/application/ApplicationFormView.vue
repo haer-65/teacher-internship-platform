@@ -51,7 +51,7 @@
                   :key="`${String(base.baseId)}-${index}`"
                   :label="buildBaseLabel(base)"
                   :value="base.baseId"
-                  :disabled="isBaseSelectedElsewhere(base.baseId, index)"
+                  :disabled="isBaseSelectedElsewhere(base.baseId, index) || getRemainingQuota(base) <= 0"
                 />
               </el-select>
             </div>
@@ -62,7 +62,11 @@
         <el-table :data="selectedPlan.planBases" border class="plan-base-table">
           <el-table-column prop="baseCode" label="基地编号" width="140" />
           <el-table-column prop="baseName" label="基地名称" min-width="220" />
-          <el-table-column prop="baseQuota" label="计划名额" width="120" />
+          <el-table-column prop="remainingQuota" label="剩余名额" width="120">
+            <template #default="{ row }">
+              {{ getRemainingQuota(row) }}
+            </template>
+          </el-table-column>
           <el-table-column prop="remark" label="备注" min-width="180" />
         </el-table>
       </template>
@@ -156,8 +160,15 @@ function isBaseSelectedElsewhere(baseId: IdValue, currentIndex: number) {
 }
 
 function buildBaseLabel(base: PlanBaseItem) {
-  const quotaText = typeof base.baseQuota === 'number' ? ` / 名额：${base.baseQuota}` : '';
+  const quotaText = ` / 剩余：${getRemainingQuota(base)}`;
   return `${base.baseName || '-'}${base.baseCode ? ` (${base.baseCode})` : ''}${quotaText}`;
+}
+
+function getRemainingQuota(base: PlanBaseItem) {
+  if (typeof base.remainingQuota === 'number') {
+    return base.remainingQuota;
+  }
+  return typeof base.baseQuota === 'number' ? base.baseQuota : 0;
 }
 
 async function loadPlanOptions() {

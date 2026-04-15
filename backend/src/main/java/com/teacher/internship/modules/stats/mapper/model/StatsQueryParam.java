@@ -2,6 +2,8 @@ package com.teacher.internship.modules.stats.mapper.model;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class StatsQueryParam {
 
@@ -14,6 +16,7 @@ public class StatsQueryParam {
     private Long planId;
     private String planStatus;
     private Boolean deptAdminScope;
+    private LocalDateTime now;
     private Long limit;
     private Long offset;
 }

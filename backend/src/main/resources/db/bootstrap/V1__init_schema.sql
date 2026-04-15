@@ -22,9 +22,9 @@ DROP TABLE IF EXISTS `base_major`;
 DROP TABLE IF EXISTS `base_department`;
 
 CREATE TABLE `base_department` (
-  `id` BIGINT UNSIGNED NOT NULL COMMENT '主键ID',
-  `dept_code` VARCHAR(32) NOT NULL COMMENT '院系编码',
-  `dept_name` VARCHAR(64) NOT NULL COMMENT '院系名称',
+    `id` BIGINT UNSIGNED NOT NULL COMMENT '主键ID',
+    `dept_code` VARCHAR(32) NOT NULL COMMENT '院系编码',
+    `dept_name` VARCHAR(64) NOT NULL COMMENT '院系名称',
   `parent_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '父级院系ID，0表示根节点',
   `leader_name` VARCHAR(64) DEFAULT NULL COMMENT '负责人姓名',
   `contact_phone` VARCHAR(32) DEFAULT NULL COMMENT '联系电话',
@@ -33,50 +33,53 @@ CREATE TABLE `base_department` (
   `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_by` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '更新人',
   `updated_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `deleted` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0未删除，>0删除时间戳',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_base_department_code` (`dept_code`, `deleted`),
-  KEY `idx_base_department_parent_id` (`parent_id`),
-  KEY `idx_base_department_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='院系基础数据表';
+    `deleted` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0未删除，>0删除时间戳',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_base_department_code` (`dept_code`, `deleted`),
+    UNIQUE KEY `uk_base_department_name` (`dept_name`, `deleted`),
+    KEY `idx_base_department_parent_id` (`parent_id`),
+    KEY `idx_base_department_status` (`status`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='院系基础数据表';
 
 CREATE TABLE `base_major` (
-  `id` BIGINT UNSIGNED NOT NULL COMMENT '主键ID',
-  `dept_id` BIGINT UNSIGNED NOT NULL COMMENT '所属院系ID',
-  `major_code` VARCHAR(32) NOT NULL COMMENT '专业编码',
-  `major_name` VARCHAR(64) NOT NULL COMMENT '专业名称',
+    `id` BIGINT UNSIGNED NOT NULL COMMENT '主键ID',
+    `dept_id` BIGINT UNSIGNED NOT NULL COMMENT '所属院系ID',
+    `major_code` VARCHAR(32) NOT NULL COMMENT '专业编码',
+    `major_name` VARCHAR(64) NOT NULL COMMENT '专业名称',
   `status` VARCHAR(16) NOT NULL DEFAULT 'ENABLED' COMMENT '状态：ENABLED/DISABLED',
   `created_by` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '创建人',
   `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_by` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '更新人',
   `updated_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `deleted` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0未删除，>0删除时间戳',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_base_major_code` (`major_code`, `deleted`),
-  KEY `idx_base_major_dept_id` (`dept_id`),
-  KEY `idx_base_major_status` (`status`),
-  CONSTRAINT `fk_base_major_dept` FOREIGN KEY (`dept_id`) REFERENCES `base_department` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='专业基础数据表';
+    `deleted` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0未删除，>0删除时间戳',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_base_major_code` (`major_code`, `deleted`),
+    UNIQUE KEY `uk_base_major_name` (`major_name`, `deleted`),
+    KEY `idx_base_major_dept_id` (`dept_id`),
+    KEY `idx_base_major_status` (`status`),
+    CONSTRAINT `fk_base_major_dept` FOREIGN KEY (`dept_id`) REFERENCES `base_department` (`id`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='专业基础数据表';
 
 CREATE TABLE `base_grade` (
-  `id` BIGINT UNSIGNED NOT NULL COMMENT '主键ID',
-  `grade_code` VARCHAR(32) NOT NULL COMMENT '年级编码',
-  `grade_name` VARCHAR(32) NOT NULL COMMENT '年级名称',
+    `id` BIGINT UNSIGNED NOT NULL COMMENT '主键ID',
+    `grade_code` VARCHAR(32) NOT NULL COMMENT '年级编码',
+    `grade_name` VARCHAR(32) NOT NULL COMMENT '年级名称',
   `status` VARCHAR(16) NOT NULL DEFAULT 'ENABLED' COMMENT '状态：ENABLED/DISABLED',
   `created_by` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '创建人',
   `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_by` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '更新人',
   `updated_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `deleted` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0未删除，>0删除时间戳',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_base_grade_code` (`grade_code`, `deleted`),
-  KEY `idx_base_grade_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='年级基础数据表';
+    `deleted` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0未删除，>0删除时间戳',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_base_grade_code` (`grade_code`, `deleted`),
+    UNIQUE KEY `uk_base_grade_name` (`grade_name`, `deleted`),
+    KEY `idx_base_grade_status` (`status`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='年级基础数据表';
 
 CREATE TABLE `base_internship_base` (
-  `id` BIGINT UNSIGNED NOT NULL COMMENT '主键ID',
-  `base_code` VARCHAR(32) NOT NULL COMMENT '实习基地编码',
-  `base_name` VARCHAR(128) NOT NULL COMMENT '实习基地名称',
+    `id` BIGINT UNSIGNED NOT NULL COMMENT '主键ID',
+    `base_code` VARCHAR(32) NOT NULL COMMENT '实习基地编码',
+    `base_name` VARCHAR(128) NOT NULL COMMENT '实习基地名称',
   `province` VARCHAR(64) DEFAULT NULL COMMENT '省份',
   `city` VARCHAR(64) DEFAULT NULL COMMENT '城市',
   `district` VARCHAR(64) DEFAULT NULL COMMENT '区县',
@@ -88,12 +91,13 @@ CREATE TABLE `base_internship_base` (
   `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_by` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '更新人',
   `updated_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `deleted` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0未删除，>0删除时间戳',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_base_internship_base_code` (`base_code`, `deleted`),
-  KEY `idx_base_internship_base_name` (`base_name`),
-  KEY `idx_base_internship_base_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='实习基地基础数据表';
+    `deleted` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '逻辑删除标记：0未删除，>0删除时间戳',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_base_internship_base_code` (`base_code`, `deleted`),
+    UNIQUE KEY `uk_base_internship_base_name` (`base_name`, `deleted`),
+    KEY `idx_base_internship_base_name` (`base_name`),
+    KEY `idx_base_internship_base_status` (`status`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='实习基地基础数据表';
 
 -- =========================
 -- 系统表

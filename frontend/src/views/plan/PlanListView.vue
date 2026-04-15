@@ -30,7 +30,11 @@
       <el-table-column prop="planName" label="计划名称" min-width="220" />
       <el-table-column prop="academicYear" label="学年" width="130" />
       <el-table-column prop="term" label="学期" width="110" />
-      <el-table-column prop="studentQuota" label="名额" width="90" />
+      <el-table-column prop="remainingQuota" label="剩余名额" width="100">
+        <template #default="{ row }">
+          {{ row.remainingQuota ?? row.studentQuota }}
+        </template>
+      </el-table-column>
       <el-table-column prop="planStatus" label="状态" width="110">
         <template #default="{ row }">
           <el-tag :type="statusTagType(row.planStatus)">{{ statusLabel(row.planStatus) }}</el-tag>

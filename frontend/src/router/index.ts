@@ -270,7 +270,7 @@ router.beforeEach(async (to, _from, next) => {
     return;
   }
 
-  if (!authStore.userInfo?.accountNo) {
+  if (!authStore.contextSynced || !authStore.userInfo?.accountNo) {
     try {
       await authStore.refreshMe();
     } catch (_error) {

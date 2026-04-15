@@ -219,6 +219,12 @@ export function queryDepartmentOptionsApi(): Promise<ApiResponse<IdNameOption[]>
   return http.get('/v1/admin/system/base/department/options');
 }
 
+export function querySystemParamValueApi(code: string, defaultValue?: string): Promise<ApiResponse<string>> {
+  return http.get(`/v1/admin/system/param/value/${code}`, {
+    params: defaultValue != null ? { defaultValue } : undefined
+  });
+}
+
 export function queryParamPageApi(
   params: ParamPageQuery
 ): Promise<ApiResponse<PageResultData<SysParamItem>>> {

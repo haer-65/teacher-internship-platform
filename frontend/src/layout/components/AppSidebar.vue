@@ -326,11 +326,10 @@ async function handleUpdatePassword(formRef: typeof passwordFormRef = passwordFo
       newPassword: passwordForm.newPassword,
       confirmPassword: passwordForm.confirmPassword
     });
-    if (authStore.userInfo) {
-      authStore.userInfo.mustChangePassword = 0;
-    }
+    await authStore.refreshMe();
     ElMessage.success('密码修改成功');
     profileDialogVisible.value = false;
+    forcePasswordDialogVisible.value = false;
     profileActiveTab.value = 'profile';
     resetPasswordForm();
   } finally {

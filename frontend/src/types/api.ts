@@ -119,6 +119,7 @@ export interface PlanListItem {
   endTime: string;
   applyDeadline: string;
   studentQuota: number;
+  remainingQuota?: number;
   innerTeacherWeight: number;
   baseTeacherWeight: number;
   planStatus: PlanStatus;
@@ -140,6 +141,7 @@ export interface PlanBaseItem {
   baseCode?: string;
   baseName?: string;
   baseQuota: number;
+  remainingQuota?: number;
   sortNo: number;
   status: string;
   remark?: string;
@@ -157,6 +159,7 @@ export interface PlanDetailData {
   endTime: string;
   applyDeadline: string;
   studentQuota: number;
+  remainingQuota?: number;
   description?: string;
   innerTeacherWeight: number;
   baseTeacherWeight: number;

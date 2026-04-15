@@ -30,6 +30,7 @@ import com.teacher.internship.modules.stats.vo.StatsScoreDistributionItemVO;
 import com.teacher.internship.modules.stats.vo.StatsScoreSummaryVO;
 import com.teacher.internship.modules.system.entity.SysUser;
 import com.teacher.internship.modules.system.mapper.SysUserMapper;
+import com.teacher.internship.modules.system.service.SystemParamService;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -43,6 +44,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -57,6 +59,8 @@ public class StatsService {
     private static final String ROLE_ACADEMIC_ADMIN = "ACADEMIC_ADMIN";
     private static final String ROLE_SYS_ADMIN = "SYS_ADMIN";
     private static final String STATUS_ENABLED = "ENABLED";
+    private static final String PARAM_SCORE_DECIMAL_SCALE = "SCORE_DECIMAL_SCALE";
+    private static final int DEFAULT_SCORE_SCALE = 2;
     private static final BigDecimal HUNDRED = new BigDecimal("100");
 
     private final StatsQueryMapper statsQueryMapper;
@@ -66,6 +70,7 @@ public class StatsService {
     private final BaseGradeMapper gradeMapper;
     private final BaseInternshipBaseMapper internshipBaseMapper;
     private final BizInternshipPlanMapper planMapper;
+    private final SystemParamService paramService;
 
     public StatsService(StatsQueryMapper statsQueryMapper,
                         SysUserMapper userMapper,
@@ -73,7 +78,8 @@ public class StatsService {
                         BaseMajorMapper majorMapper,
                         BaseGradeMapper gradeMapper,
                         BaseInternshipBaseMapper internshipBaseMapper,
-                        BizInternshipPlanMapper planMapper) {
+                        BizInternshipPlanMapper planMapper,
+                        SystemParamService paramService) {
         this.statsQueryMapper = statsQueryMapper;
         this.userMapper = userMapper;
         this.departmentMapper = departmentMapper;
@@ -81,6 +87,7 @@ public class StatsService {
         this.gradeMapper = gradeMapper;
         this.internshipBaseMapper = internshipBaseMapper;
         this.planMapper = planMapper;
+        this.paramService = paramService;
     }
 
     public StatsDashboardVO queryDashboard(StatsQueryRequest request,
@@ -341,6 +348,7 @@ public class StatsService {
         param.setPlanId(request.getPlanId());
         param.setPlanStatus(request.getPlanStatus());
         param.setDeptAdminScope(request.getDeptAdminScope());
+        param.setNow(LocalDateTime.now());
         param.setLimit(limit);
         param.setOffset(offset);
         return param;
@@ -522,7 +530,7 @@ public class StatsService {
     }
 
     private BigDecimal scale(BigDecimal value) {
-        return value.setScale(2, RoundingMode.HALF_UP);
+        return value.setScale(resolveScoreScale(), RoundingMode.HALF_UP);
     }
 
     private BigDecimal rate(long numerator, long denominator) {
@@ -540,6 +548,11 @@ public class StatsService {
 
     private String defaultText(String text) {
         return text == null ? "" : text;
+    }
+
+    private int resolveScoreScale() {
+        int configuredScale = paramService.getIntValue(PARAM_SCORE_DECIMAL_SCALE, DEFAULT_SCORE_SCALE);
+        return Math.max(configuredScale, 0);
     }
 
     private static class ScopedQuery {

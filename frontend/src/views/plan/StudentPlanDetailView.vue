@@ -25,7 +25,7 @@
         <el-descriptions-item label="开始时间">{{ detail.startTime }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ detail.endTime }}</el-descriptions-item>
         <el-descriptions-item label="申请截止时间">{{ detail.applyDeadline }}</el-descriptions-item>
-        <el-descriptions-item label="学生名额">{{ detail.studentQuota }}</el-descriptions-item>
+        <el-descriptions-item label="剩余名额">{{ detail.remainingQuota ?? detail.studentQuota }}</el-descriptions-item>
         <el-descriptions-item label="校内导师权重">{{ detail.innerTeacherWeight }}%</el-descriptions-item>
         <el-descriptions-item label="基地导师权重">{{ detail.baseTeacherWeight }}%</el-descriptions-item>
         <el-descriptions-item label="说明" :span="2">{{ detail.description || '-' }}</el-descriptions-item>
@@ -35,7 +35,11 @@
       <el-table :data="detail.planBases || []" border>
         <el-table-column prop="baseCode" label="基地编码" width="140" />
         <el-table-column prop="baseName" label="基地名称" min-width="220" />
-        <el-table-column prop="baseQuota" label="基地名额" width="120" />
+        <el-table-column prop="remainingQuota" label="剩余名额" width="120">
+          <template #default="{ row }">
+            {{ row.remainingQuota ?? row.baseQuota }}
+          </template>
+        </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="180" />
       </el-table>
 
@@ -85,6 +89,9 @@ const canApply = computed(() => {
   if (!detail.value.applyDeadline) {
     return false;
   }
+  if (typeof detail.value.remainingQuota === 'number' && detail.value.remainingQuota <= 0) {
+    return false;
+  }
   return new Date(detail.value.applyDeadline).getTime() >= Date.now();
 });
 
@@ -96,6 +103,9 @@ const applyStatusTitle = computed(() => {
     return '当前计划可以申请';
   }
   if (detail.value.planStatus === 'PUBLISHED') {
+    if (typeof detail.value.remainingQuota === 'number' && detail.value.remainingQuota <= 0) {
+      return '当前计划名额已满';
+    }
     return '当前计划已截止申请';
   }
   if (detail.value.planStatus === 'FINISHED') {
@@ -128,6 +138,9 @@ const applyStatusDescription = computed(() => {
     return `请在 ${detail.value.applyDeadline} 前完成志愿填报并提交申请。`;
   }
   if (detail.value.planStatus === 'PUBLISHED') {
+    if (typeof detail.value.remainingQuota === 'number' && detail.value.remainingQuota <= 0) {
+      return '该计划当前剩余名额已为 0，学生暂不能继续申请，请选择其他计划。';
+    }
     return `该计划的申请截止时间为 ${detail.value.applyDeadline}，当前已不能再提交申请。`;
   }
   if (detail.value.planStatus === 'FINISHED') {

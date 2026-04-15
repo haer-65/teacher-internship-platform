@@ -19,6 +19,7 @@ import com.teacher.internship.modules.system.entity.SysUser;
 import com.teacher.internship.modules.system.mapper.SysLoginLogMapper;
 import com.teacher.internship.modules.system.mapper.SysUserMapper;
 import com.teacher.internship.modules.system.service.RbacService;
+import com.teacher.internship.modules.system.service.SystemParamService;
 import com.teacher.internship.security.jwt.JwtProperties;
 import com.teacher.internship.security.jwt.JwtTokenProvider;
 import com.teacher.internship.security.jwt.JwtUserPrincipal;
@@ -38,7 +39,8 @@ import java.util.stream.Collectors;
 @Service
 public class AuthService {
 
-    private static final long REMEMBER_ME_SECONDS = 7L * 24L * 60L * 60L;
+    private static final String PARAM_LOGIN_REMEMBER_DAYS = "SYSTEM_LOGIN_REMEMBER_DAYS";
+    private static final long DEFAULT_REMEMBER_ME_DAYS = 7L;
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final SysUserMapper sysUserMapper;
@@ -50,6 +52,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
+    private final SystemParamService paramService;
 
     public AuthService(SysUserMapper sysUserMapper,
                        SysLoginLogMapper sysLoginLogMapper,
@@ -59,7 +62,8 @@ public class AuthService {
                        RbacService rbacService,
                        PasswordEncoder passwordEncoder,
                        JwtTokenProvider jwtTokenProvider,
-                       JwtProperties jwtProperties) {
+                       JwtProperties jwtProperties,
+                       SystemParamService paramService) {
         this.sysUserMapper = sysUserMapper;
         this.sysLoginLogMapper = sysLoginLogMapper;
         this.baseDepartmentMapper = baseDepartmentMapper;
@@ -69,6 +73,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.jwtProperties = jwtProperties;
+        this.paramService = paramService;
     }
 
     public AuthContextVO login(LoginRequest request, HttpServletRequest httpRequest) {
@@ -92,7 +97,9 @@ public class AuthService {
         validateLoginStatus(user);
 
         String currentRoleCode = chooseCurrentRoleCode(user.getId(), request.getRoleCode());
-        long expiresIn = Boolean.TRUE.equals(request.getRememberMe()) ? REMEMBER_ME_SECONDS : jwtProperties.getExpirationSeconds();
+        long expiresIn = Boolean.TRUE.equals(request.getRememberMe())
+                ? resolveRememberMeSeconds()
+                : jwtProperties.getExpirationSeconds();
         String token = jwtTokenProvider.createToken(user.getId(), resolveAccountNo(user), currentRoleCode, expiresIn);
 
         user.setLastLoginTime(LocalDateTime.now());
@@ -272,6 +279,12 @@ public class AuthService {
             log.warn("Save login log failed, accountNo={}, userId={}, result={}, reason={}",
                     loginName, userId, result, reason, ex);
         }
+    }
+
+    private long resolveRememberMeSeconds() {
+        int configuredDays = paramService.getIntValue(PARAM_LOGIN_REMEMBER_DAYS, (int) DEFAULT_REMEMBER_ME_DAYS);
+        long safeDays = Math.max(configuredDays, 1);
+        return safeDays * 24L * 60L * 60L;
     }
 
     private String extractIp(HttpServletRequest request) {

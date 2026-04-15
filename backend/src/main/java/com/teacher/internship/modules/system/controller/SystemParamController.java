@@ -48,6 +48,12 @@ public class SystemParamController {
         return ApiResponse.success(paramService.queryPage(page, size, keyword, paramType, status));
     }
 
+    @GetMapping("/value/{code}")
+    public ApiResponse<String> value(@PathVariable("code") String code,
+                                     @RequestParam(required = false) String defaultValue) {
+        return ApiResponse.success(paramService.getStringValue(code, defaultValue));
+    }
+
     @GetMapping("/detail/{id}")
     @PreAuthorize("@permissionService.hasPermission('param:manage')")
     public ApiResponse<SysParamItemVO> detail(@PathVariable("id") Long id) {

@@ -1,83 +1,122 @@
-# 数据库初始化说明（MySQL 8.0）
+# 数据库初始化说明
 
-## 1. 适用范围
+本文档说明当前项目的数据库初始化方式、脚本顺序和常见检查点。
 
-本文档用于本项目在 Windows 本地环境下的数据库首次初始化、种子数据导入、增量脚本执行与结果校验。
+## 1. 初始化方式
 
-数据库名：`teacher_internship_platform`
+后端会在启动时自动加载：
 
-## 2. 初始化前检查
+```text
+backend/src/main/resources/db/bootstrap/V*__*.sql
+```
 
-1. 已安装并启动 MySQL 8.0。
-2. 当前用户具备建库建表权限。
-3. 客户端字符集建议使用 `utf8mb4`。
-4. 确保执行顺序严格按照版本号。
+对应配置项：
 
-## 3. SQL 脚本执行顺序
+- `APP_BOOTSTRAP_ENABLED=true`
+- `APP_BOOTSTRAP_SCRIPT_LOCATION=classpath:/db/bootstrap/V*__*.sql`
 
-| 顺序 | 脚本 | 说明 |
-|---|---|---|
-| 1 | `V1__init_schema.sql` | 建库、建表、索引、外键 |
-| 2 | `V2__seed_data.sql` | 基础字典、角色菜单、权限、默认账号、参数 |
-| 3 | `V3__seed_plan_data.sql` | 计划模块演示数据 |
-| 4 | `V4__seed_application_rbac.sql` | 申请分配菜单权限补充 |
-| 5 | `V5__material_management_ext.sql` | 材料补交控制表与权限补充 |
-| 6 | `V6__evaluation_management_ext.sql` | 评价表结构扩展 |
-| 7 | `V7__score_management_ext.sql` | 成绩快照字段扩展 |
-| 8 | `V8__stats_analysis_ext.sql` | 统计查询索引补充 |
-| 9 | `V9__menu_component_path_alignment.sql` | 菜单组件路径对齐 |
+也就是说，当前项目的数据库初始化以后端资源目录下的 bootstrap 脚本为准，不需要手工逐个导入旧版脚本。
 
-## 4. 命令行导入方式（PowerShell）
+## 2. 前置条件
+
+- MySQL 8.0
+- Redis 6.x 或兼容版本
+- Java 17
+- Maven 3.9.9 或以上
+
+如果使用仓库自带的 Windows 工具包，`tools/` 下已经包含本地 Maven、MySQL、Redis 和离线仓库。
+
+## 3. 推荐初始化步骤
+
+### 3.1 启动依赖
 
 ```powershell
-mysql -h 127.0.0.1 -P 3306 -u root -p < .\sql\V1__init_schema.sql
-mysql -h 127.0.0.1 -P 3306 -u root -p teacher_internship_platform < .\sql\V2__seed_data.sql
-mysql -h 127.0.0.1 -P 3306 -u root -p teacher_internship_platform < .\sql\V3__seed_plan_data.sql
-mysql -h 127.0.0.1 -P 3306 -u root -p teacher_internship_platform < .\sql\V4__seed_application_rbac.sql
-mysql -h 127.0.0.1 -P 3306 -u root -p teacher_internship_platform < .\sql\V5__material_management_ext.sql
-mysql -h 127.0.0.1 -P 3306 -u root -p teacher_internship_platform < .\sql\V6__evaluation_management_ext.sql
-mysql -h 127.0.0.1 -P 3306 -u root -p teacher_internship_platform < .\sql\V7__score_management_ext.sql
-mysql -h 127.0.0.1 -P 3306 -u root -p teacher_internship_platform < .\sql\V8__stats_analysis_ext.sql
-mysql -h 127.0.0.1 -P 3306 -u root -p teacher_internship_platform < .\sql\V9__menu_component_path_alignment.sql
+.\tools\start-deps.ps1
 ```
 
-## 5. 导入后校验 SQL
+该脚本会优先启动本机服务，如果服务不存在，则使用 `tools/` 中的本地依赖启动 MySQL 和 Redis。
 
-```sql
-USE teacher_internship_platform;
+### 3.2 启动后端
 
--- 表数量
-SELECT COUNT(*) AS table_count
-FROM information_schema.tables
-WHERE table_schema = 'teacher_internship_platform';
-
--- 默认角色
-SELECT role_code, role_name, status
-FROM sys_role
-WHERE deleted = 0
-ORDER BY id;
-
--- 默认账号
-SELECT login_name, real_name, status
-FROM sys_user
-WHERE deleted = 0
-ORDER BY id;
-
--- 核心业务表示例检查
-SELECT COUNT(*) AS plan_count FROM biz_internship_plan WHERE deleted = 0;
-SELECT COUNT(*) AS material_type_count FROM biz_material_type WHERE deleted = 0;
+```powershell
+cd .\backend
+mvn spring-boot:run
 ```
 
-## 6. 常见问题
+首次启动时会自动执行 bootstrap 脚本并初始化库表、种子数据和权限数据。
 
-1. `Unknown database`：先执行 `V1__init_schema.sql`。
-2. 外键报错：检查是否跳脚本或顺序执行错误。
-3. 编码乱码：确保连接使用 `utf8mb4`。
-4. 重复导入冲突：先清空库后重做，或按脚本内的幂等逻辑执行。
+### 3.3 验证结果
 
-## 7. 课程答辩建议
+- 数据库是否已创建：`teacher_internship_platform`
+- 健康检查是否通过：`http://localhost:8080/api/v1/health/check`
+- 默认账号是否可登录：见 [默认账号说明](./05-default-accounts.md)
 
-1. 现场展示时优先展示“已初始化完成”的数据库状态与关键表数量。
-2. 说明“脚本版本顺序 + 增量脚本可追溯”是可交付能力。
-3. 演示账号提前验证，避免因数据状态导致流程中断。
+## 4. 脚本版本范围
+
+当前后端资源目录中可用的 bootstrap 脚本已经到 `V20`，按文件名自然排序执行。
+
+可以把它理解为三段：
+- `V1-V2`：建库建表与基础种子
+- `V3-V9`：日志、业务模块和菜单补全
+- `V10-V20`：国际化、权限范围、数据对齐、字段修正和业务补丁
+
+如果你要重建数据库，最稳妥的方式仍然是清空库后直接重启后端，让启动器按顺序执行全部脚本。
+
+## 5. 关键环境变量
+
+### 数据库
+
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+
+### Redis
+
+- `REDIS_HOST`
+- `REDIS_PORT`
+- `REDIS_DB`
+- `REDIS_PASSWORD`
+
+### 文件存储
+
+- `FILE_STORAGE_ROOT`
+- `FILE_MAX_SIZE_MB`
+
+### 初始化开关
+
+- `APP_BOOTSTRAP_ENABLED`
+- `APP_BOOTSTRAP_SCRIPT_LOCATION`
+
+## 6. 常见检查点
+
+### 6.1 表是否完整
+
+重点确认以下表存在：
+
+- `sys_user`
+- `sys_role`
+- `sys_menu`
+- `biz_internship_plan`
+- `biz_student_application`
+- `biz_assignment`
+- `biz_material`
+- `biz_evaluation`
+- `biz_score_sheet`
+- `biz_notice`
+
+### 6.2 初始数据是否就绪
+
+至少确认：
+
+- 角色已初始化
+- 菜单权限已绑定
+- 基础数据已初始化
+- 默认账号可登录
+- 计划和申请相关菜单能正常显示
+
+### 6.3 Redis 是否可用
+
+Redis 用于缓存、会话相关辅助能力和部分运行时状态。若 Redis 未启动，后端会在相关能力上报错或退化，因此建议在数据库初始化前先保证 Redis 可用。
 

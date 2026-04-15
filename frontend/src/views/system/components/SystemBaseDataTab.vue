@@ -224,22 +224,16 @@
     <template #footer><el-button @click="gradeDialog.visible = false">取消</el-button><el-button type="primary" :loading="gradeDialog.loading" @click="submitGrade">确认</el-button></template>
   </el-dialog>
 
-  <el-dialog v-model="baseDialog.visible" :title="baseDialog.mode === 'create' ? '新建实习基地' : '编辑实习基地'" width="640px" destroy-on-close>
-    <el-form label-width="110px">
-      <el-row :gutter="12">
-        <el-col :span="12"><el-form-item label="编码"><el-input v-model.trim="baseForm.baseCode" placeholder="留空则自动生成" /></el-form-item></el-col>
-        <el-col :span="12"><el-form-item label="名称"><el-input v-model.trim="baseForm.baseName" /></el-form-item></el-col>
-      </el-row>
-      <el-row :gutter="12">
-        <el-col :span="8"><el-form-item label="省份"><el-input v-model.trim="baseForm.province" /></el-form-item></el-col>
-        <el-col :span="8"><el-form-item label="城市"><el-input v-model.trim="baseForm.city" /></el-form-item></el-col>
-        <el-col :span="8"><el-form-item label="区县"><el-input v-model.trim="baseForm.district" /></el-form-item></el-col>
-      </el-row>
+  <el-dialog v-model="baseDialog.visible" :title="baseDialog.mode === 'create' ? '新建实习基地' : '编辑实习基地'" width="560px" destroy-on-close>
+    <el-form label-width="100px">
+      <el-form-item label="编码"><el-input v-model.trim="baseForm.baseCode" placeholder="留空则自动生成" /></el-form-item>
+      <el-form-item label="名称"><el-input v-model.trim="baseForm.baseName" /></el-form-item>
+      <el-form-item label="省份"><el-input v-model.trim="baseForm.province" /></el-form-item>
+      <el-form-item label="城市"><el-input v-model.trim="baseForm.city" /></el-form-item>
+      <el-form-item label="区县"><el-input v-model.trim="baseForm.district" /></el-form-item>
       <el-form-item label="地址"><el-input v-model.trim="baseForm.address" /></el-form-item>
-      <el-row :gutter="12">
-        <el-col :span="12"><el-form-item label="联系人"><el-input v-model.trim="baseForm.contactPerson" /></el-form-item></el-col>
-        <el-col :span="12"><el-form-item label="手机号"><el-input v-model.trim="baseForm.contactPhone" /></el-form-item></el-col>
-      </el-row>
+      <el-form-item label="联系人"><el-input v-model.trim="baseForm.contactPerson" /></el-form-item>
+      <el-form-item label="手机号"><el-input v-model.trim="baseForm.contactPhone" /></el-form-item>
     </el-form>
     <template #footer><el-button @click="baseDialog.visible = false">取消</el-button><el-button type="primary" :loading="baseDialog.loading" @click="submitBase">确认</el-button></template>
   </el-dialog>

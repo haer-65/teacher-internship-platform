@@ -25,12 +25,12 @@ Thumbs.db
 
 # Logs
 *.log
-*.pdb
 logs/
 runtime/
 
 # Runtime
 temp/run-logs/*.pid
+tools/mysql/**/*.pdb
 
 # User uploads should stay out of Git, but keep the folder itself.
 uploads/*

@@ -265,6 +265,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import PlanAttachmentUploader from './components/PlanAttachmentUploader.vue';
 import { createPlanApi, getPlanDetailApi, queryPlanBaseOptionsApi, queryPlanDepartmentsApi, updatePlanApi } from '@/api/modules/plan';
+import { querySystemParamValueApi } from '@/api/modules/system-admin';
 import type { IdNameOption, IdValue, PlanAttachmentItem, PlanBaseItem, PlanDetailData, PlanMaterialTypeItem } from '@/types/api';
 import { normalizeRouteId } from '@/utils/id';
 
@@ -470,6 +471,18 @@ async function fetchBaseOptions() {
   baseOptions.value = resp.data || [];
 }
 
+async function fetchDefaultStudentQuota() {
+  try {
+    const resp = await querySystemParamValueApi('PLAN_DEFAULT_QUOTA', '50');
+    const parsed = Number(resp.data || 0);
+    if (!Number.isNaN(parsed) && parsed > 0 && !isEdit.value) {
+      formModel.studentQuota = parsed;
+    }
+  } catch (error) {
+    console.error('获取默认计划名额失败:', error);
+  }
+}
+
 function fillFormByDetail(detail: PlanDetailData) {
   planId.value = detail.id;
   planStatus.value = detail.planStatus;
@@ -624,7 +637,7 @@ function goBack() {
 }
 
 onMounted(async () => {
-  await Promise.all([fetchDepartmentOptions(), fetchBaseOptions()]);
+  await Promise.all([fetchDepartmentOptions(), fetchBaseOptions(), fetchDefaultStudentQuota()]);
   if (isEdit.value) {
     const id = normalizeRouteId(route.params.id);
     if (id) {

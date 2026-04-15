@@ -1302,6 +1302,7 @@ public class ApplicationService {
                 .map(BizPlanBase::getBaseId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet()));
+        Map<Long, Map<Long, Integer>> remainingQuotaMap = queryRemainingQuotaMapByPlanIds(planIds);
 
         Map<Long, List<PlanBaseVO>> result = new HashMap<>();
         for (BizPlanBase planBase : planBases) {
@@ -1309,8 +1310,13 @@ public class ApplicationService {
             if (enabledOnly && (base == null || !STATUS_ENABLED.equals(normalizeCode(base.getStatus())))) {
                 continue;
             }
+            Integer remainingQuota = null;
+            Map<Long, Integer> planRemainingQuotaMap = remainingQuotaMap.get(planBase.getPlanId());
+            if (planRemainingQuotaMap != null) {
+                remainingQuota = planRemainingQuotaMap.get(planBase.getBaseId());
+            }
             result.computeIfAbsent(planBase.getPlanId(), key -> new ArrayList<>())
-                    .add(toPlanBaseVO(planBase, base));
+                    .add(toPlanBaseVO(planBase, base, remainingQuota));
         }
         return result;
     }
@@ -1368,7 +1374,7 @@ public class ApplicationService {
         return vo;
     }
 
-    private PlanBaseVO toPlanBaseVO(BizPlanBase entity, BaseInternshipBase base) {
+    private PlanBaseVO toPlanBaseVO(BizPlanBase entity, BaseInternshipBase base, Integer remainingQuota) {
         PlanBaseVO vo = new PlanBaseVO();
         vo.setId(entity.getId());
         vo.setPlanId(entity.getPlanId());
@@ -1376,6 +1382,7 @@ public class ApplicationService {
         vo.setBaseCode(base == null ? null : base.getBaseCode());
         vo.setBaseName(base == null ? null : base.getBaseName());
         vo.setBaseQuota(entity.getBaseQuota());
+        vo.setRemainingQuota(remainingQuota);
         vo.setSortNo(entity.getSortNo());
         vo.setStatus(entity.getStatus());
         vo.setRemark(entity.getRemark());
@@ -1930,6 +1937,52 @@ public class ApplicationService {
                         .eq(BizAssignment::getDeleted, 0L))
                 .stream()
                 .collect(Collectors.toMap(BizAssignment::getApplicationId, item -> item, (left, right) -> left));
+    }
+
+    private Map<Long, Map<Long, Integer>> queryRemainingQuotaMapByPlanIds(Set<Long> planIds) {
+        if (CollectionUtils.isEmpty(planIds)) {
+            return new HashMap<>();
+        }
+        List<BizPlanBase> planBases = planBaseMapper.selectList(new LambdaQueryWrapper<BizPlanBase>()
+                .in(BizPlanBase::getPlanId, planIds)
+                .eq(BizPlanBase::getDeleted, 0L)
+                .eq(BizPlanBase::getStatus, STATUS_ENABLED)
+                .orderByAsc(BizPlanBase::getPlanId)
+                .orderByAsc(BizPlanBase::getSortNo)
+                .orderByAsc(BizPlanBase::getId));
+        if (CollectionUtils.isEmpty(planBases)) {
+            return new HashMap<>();
+        }
+
+        Set<Long> baseIds = planBases.stream()
+                .map(BizPlanBase::getBaseId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, BaseInternshipBase> baseMap = queryBaseMap(baseIds);
+        Map<Long, Map<Long, Long>> currentCountMap = assignmentMapper.selectList(new LambdaQueryWrapper<BizAssignment>()
+                        .in(BizAssignment::getPlanId, planIds)
+                        .eq(BizAssignment::getIsCurrent, 1)
+                        .eq(BizAssignment::getDeleted, 0L))
+                .stream()
+                .filter(item -> item.getPlanId() != null && item.getBaseId() != null)
+                .collect(Collectors.groupingBy(
+                        BizAssignment::getPlanId,
+                        Collectors.groupingBy(BizAssignment::getBaseId, Collectors.counting())
+                ));
+
+        Map<Long, Map<Long, Integer>> result = new HashMap<>();
+        for (BizPlanBase planBase : planBases) {
+            BaseInternshipBase base = baseMap.get(planBase.getBaseId());
+            if (base == null || !STATUS_ENABLED.equals(normalizeCode(base.getStatus()))) {
+                continue;
+            }
+            Map<Long, Integer> planRemainingQuotaMap = result.computeIfAbsent(planBase.getPlanId(), key -> new HashMap<>());
+            Map<Long, Long> planCountMap = currentCountMap.get(planBase.getPlanId());
+            long used = planCountMap == null ? 0L : planCountMap.getOrDefault(planBase.getBaseId(), 0L);
+            int quota = planBase.getBaseQuota() == null ? 0 : planBase.getBaseQuota();
+            planRemainingQuotaMap.put(planBase.getBaseId(), Math.max(quota - (int) used, 0));
+        }
+        return result;
     }
 
     private Set<Long> findPlanIdsByKeyword(String keyword, Set<Long> scopePlanIds) {

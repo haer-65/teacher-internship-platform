@@ -67,6 +67,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -94,6 +95,8 @@ public class PlanService {
     private static final String TYPE_PROCESS = "PROCESS";
     private static final String TYPE_FINAL = "FINAL";
     private static final String PARAM_FILE_MAX_SIZE_MB = "SYSTEM_FILE_MAX_SIZE_MB";
+    private static final String PARAM_PLAN_DEFAULT_QUOTA = "PLAN_DEFAULT_QUOTA";
+    private static final int DEFAULT_PLAN_DEFAULT_QUOTA = 50;
 
     private final BizInternshipPlanMapper planMapper;
     private final BizMaterialTypeMapper materialTypeMapper;
@@ -181,12 +184,17 @@ public class PlanService {
         }
 
         Page<BizInternshipPlan> pageResult = planMapper.selectPage(new Page<>(safePage, safeSize), wrapper);
+        Map<Long, Integer> remainingQuotaMap = queryRemainingQuotaMapByPlanIds(pageResult.getRecords().stream()
+                .map(BizInternshipPlan::getId)
+                .collect(Collectors.toSet()));
 
         PlanPageVO vo = new PlanPageVO();
         vo.setPage(safePage);
         vo.setSize(safeSize);
         vo.setTotal(pageResult.getTotal());
-        vo.setRecords(pageResult.getRecords().stream().map(this::toPlanListItemVO).collect(Collectors.toList()));
+        vo.setRecords(pageResult.getRecords().stream()
+                .map(entity -> toPlanListItemVO(entity, remainingQuotaMap.get(entity.getId())))
+                .collect(Collectors.toList()));
         return vo;
     }
 
@@ -202,6 +210,7 @@ public class PlanService {
         String normalizedRoleCode = normalizeCode(roleCode);
         SysUser currentUser = requireUser(userId);
         ensureManagePermission(currentUser, normalizedRoleCode, request.getDeptId());
+        normalizePlanDefaultQuota(request);
         validateSaveRequest(request);
 
         BizInternshipPlan plan = new BizInternshipPlan();
@@ -444,6 +453,9 @@ public class PlanService {
                 .flatMap(map -> map.values().stream())
                 .map(BizMaterial::getId)
                 .collect(Collectors.toSet());
+        if (CollectionUtils.isEmpty(materialIds)) {
+            throw new BusinessException(ApiCode.BAD_REQUEST.getCode(), "学生必交材料尚未全部提交，不能提前结束计划");
+        }
         Map<Long, BizMaterialVersion> currentVersionMap = materialVersionMapper.selectList(new LambdaQueryWrapper<BizMaterialVersion>()
                         .in(BizMaterialVersion::getMaterialId, materialIds)
                         .eq(BizMaterialVersion::getDeleted, 0L)
@@ -495,6 +507,9 @@ public class PlanService {
                 .flatMap(map -> map.values().stream())
                 .map(BizMaterial::getId)
                 .collect(Collectors.toSet());
+        if (CollectionUtils.isEmpty(materialIds)) {
+            throw new BusinessException(ApiCode.BAD_REQUEST.getCode(), "学生必交材料尚未全部提交，不能提前结束计划");
+        }
         Map<Long, BizMaterialVersion> currentVersionMap = materialVersionMapper.selectList(new LambdaQueryWrapper<BizMaterialVersion>()
                         .in(BizMaterialVersion::getMaterialId, materialIds)
                         .eq(BizMaterialVersion::getDeleted, 0L)
@@ -549,6 +564,78 @@ public class PlanService {
                 .eq(BizAssignment::getPlanId, planId)
                 .eq(BizAssignment::getIsCurrent, 1)
                 .eq(BizAssignment::getDeleted, 0L));
+    }
+
+    private Map<Long, Integer> queryRemainingQuotaMapByPlanIds(Set<Long> planIds) {
+        if (CollectionUtils.isEmpty(planIds)) {
+            return new HashMap<>();
+        }
+        List<BizInternshipPlan> plans = planMapper.selectList(new LambdaQueryWrapper<BizInternshipPlan>()
+                .in(BizInternshipPlan::getId, planIds)
+                .eq(BizInternshipPlan::getDeleted, 0L));
+        if (CollectionUtils.isEmpty(plans)) {
+            return new HashMap<>();
+        }
+        Map<Long, Integer> currentCountMap = queryCurrentAssignmentCountMapByPlanIds(planIds);
+        Map<Long, Integer> result = new HashMap<>();
+        for (BizInternshipPlan plan : plans) {
+            result.put(plan.getId(), calculateRemainingQuota(plan.getStudentQuota(), currentCountMap.get(plan.getId())));
+        }
+        return result;
+    }
+
+    private Map<Long, Integer> queryRemainingQuotaMapByPlanIdAndBaseIds(Long planId, Set<Long> baseIds) {
+        if (planId == null || CollectionUtils.isEmpty(baseIds)) {
+            return new HashMap<>();
+        }
+        List<BizPlanBase> planBases = planBaseMapper.selectList(new LambdaQueryWrapper<BizPlanBase>()
+                .eq(BizPlanBase::getPlanId, planId)
+                .eq(BizPlanBase::getDeleted, 0L)
+                .in(BizPlanBase::getBaseId, baseIds));
+        if (CollectionUtils.isEmpty(planBases)) {
+            return new HashMap<>();
+        }
+        Map<Long, Integer> currentCountMap = queryCurrentAssignmentCountMapByPlanAndBaseId(planId);
+        Map<Long, Integer> result = new HashMap<>();
+        for (BizPlanBase planBase : planBases) {
+            result.put(planBase.getBaseId(), calculateRemainingQuota(planBase.getBaseQuota(), currentCountMap.get(planBase.getBaseId())));
+        }
+        return result;
+    }
+
+    private Map<Long, Integer> queryCurrentAssignmentCountMapByPlanIds(Set<Long> planIds) {
+        if (CollectionUtils.isEmpty(planIds)) {
+            return new HashMap<>();
+        }
+        List<BizAssignment> assignments = assignmentMapper.selectList(new LambdaQueryWrapper<BizAssignment>()
+                .in(BizAssignment::getPlanId, planIds)
+                .eq(BizAssignment::getIsCurrent, 1)
+                .eq(BizAssignment::getDeleted, 0L));
+        if (CollectionUtils.isEmpty(assignments)) {
+            return new HashMap<>();
+        }
+        return assignments.stream()
+                .filter(item -> item.getPlanId() != null)
+                .collect(Collectors.groupingBy(BizAssignment::getPlanId, Collectors.collectingAndThen(Collectors.counting(), Long::intValue)));
+    }
+
+    private Map<Long, Integer> queryCurrentAssignmentCountMapByPlanAndBaseId(Long planId) {
+        if (planId == null) {
+            return new HashMap<>();
+        }
+        List<BizAssignment> assignments = queryCurrentAssignmentsByPlan(planId);
+        if (CollectionUtils.isEmpty(assignments)) {
+            return new HashMap<>();
+        }
+        return assignments.stream()
+                .filter(item -> item.getBaseId() != null)
+                .collect(Collectors.groupingBy(BizAssignment::getBaseId, Collectors.collectingAndThen(Collectors.counting(), Long::intValue)));
+    }
+
+    private Integer calculateRemainingQuota(Integer totalQuota, Integer currentCount) {
+        int quota = totalQuota == null ? 0 : totalQuota;
+        int used = currentCount == null ? 0 : currentCount;
+        return Math.max(quota - used, 0);
     }
 
     private int countTeacherEvaluations(Long assignmentId,
@@ -982,6 +1069,17 @@ public class PlanService {
         }
     }
 
+    private void normalizePlanDefaultQuota(PlanSaveRequest request) {
+        if (request == null) {
+            return;
+        }
+        if (request.getStudentQuota() != null && request.getStudentQuota() > 0) {
+            return;
+        }
+        int configuredQuota = paramService.getIntValue(PARAM_PLAN_DEFAULT_QUOTA, DEFAULT_PLAN_DEFAULT_QUOTA);
+        request.setStudentQuota(Math.max(configuredQuota, 1));
+    }
+
     private void ensurePlanCodeUnique(String planCode, Long excludePlanId) {
         BizInternshipPlan existing = planMapper.selectOne(new LambdaQueryWrapper<BizInternshipPlan>()
                 .eq(BizInternshipPlan::getPlanCode, planCode)
@@ -1074,6 +1172,7 @@ public class PlanService {
 
     private PlanDetailVO buildPlanDetail(BizInternshipPlan plan) {
         PlanDetailVO detail = new PlanDetailVO();
+        int currentAssignmentCount = queryCurrentAssignmentsByPlan(plan.getId()).size();
         detail.setId(plan.getId());
         detail.setPlanCode(plan.getPlanCode());
         detail.setPlanName(plan.getPlanName());
@@ -1085,6 +1184,7 @@ public class PlanService {
         detail.setEndTime(plan.getEndTime());
         detail.setApplyDeadline(plan.getApplyDeadline());
         detail.setStudentQuota(plan.getStudentQuota());
+        detail.setRemainingQuota(calculateRemainingQuota(plan.getStudentQuota(), currentAssignmentCount));
         detail.setDescription(plan.getDescription());
         detail.setInnerTeacherWeight(plan.getInnerTeacherWeight());
         detail.setBaseTeacherWeight(plan.getBaseTeacherWeight());
@@ -1112,7 +1212,10 @@ public class PlanService {
                 .eq(BaseInternshipBase::getDeleted, 0L));
         java.util.Map<Long, BaseInternshipBase> baseMap = bases.stream()
                 .collect(Collectors.toMap(BaseInternshipBase::getId, item -> item, (left, right) -> left));
-        return entities.stream().map(item -> toPlanBaseVO(item, baseMap.get(item.getBaseId()))).collect(Collectors.toList());
+        Map<Long, Integer> remainingQuotaMap = queryRemainingQuotaMapByPlanIdAndBaseIds(planId, baseIds);
+        return entities.stream()
+                .map(item -> toPlanBaseVO(item, baseMap.get(item.getBaseId()), remainingQuotaMap.get(item.getBaseId())))
+                .collect(Collectors.toList());
     }
 
     private List<PlanMaterialTypeVO> queryMaterialTypeVOList(Long planId) {
@@ -1133,7 +1236,7 @@ public class PlanService {
         return entities.stream().map(this::toPlanAttachmentVO).collect(Collectors.toList());
     }
 
-    private PlanListItemVO toPlanListItemVO(BizInternshipPlan entity) {
+    private PlanListItemVO toPlanListItemVO(BizInternshipPlan entity, Integer remainingQuota) {
         PlanListItemVO vo = new PlanListItemVO();
         vo.setId(entity.getId());
         vo.setPlanCode(entity.getPlanCode());
@@ -1146,6 +1249,7 @@ public class PlanService {
         vo.setEndTime(entity.getEndTime());
         vo.setApplyDeadline(entity.getApplyDeadline());
         vo.setStudentQuota(entity.getStudentQuota());
+        vo.setRemainingQuota(remainingQuota);
         vo.setInnerTeacherWeight(entity.getInnerTeacherWeight());
         vo.setBaseTeacherWeight(entity.getBaseTeacherWeight());
         vo.setPlanStatus(entity.getPlanStatus());
@@ -1211,7 +1315,7 @@ public class PlanService {
         return MediaType.APPLICATION_OCTET_STREAM_VALUE;
     }
 
-    private PlanBaseVO toPlanBaseVO(BizPlanBase entity, BaseInternshipBase base) {
+    private PlanBaseVO toPlanBaseVO(BizPlanBase entity, BaseInternshipBase base, Integer remainingQuota) {
         PlanBaseVO vo = new PlanBaseVO();
         vo.setId(entity.getId());
         vo.setPlanId(entity.getPlanId());
@@ -1219,6 +1323,7 @@ public class PlanService {
         vo.setBaseCode(base == null ? null : base.getBaseCode());
         vo.setBaseName(base == null ? null : base.getBaseName());
         vo.setBaseQuota(entity.getBaseQuota());
+        vo.setRemainingQuota(remainingQuota);
         vo.setSortNo(entity.getSortNo());
         vo.setStatus(entity.getStatus());
         vo.setRemark(entity.getRemark());

@@ -26,12 +26,16 @@
       <el-table-column prop="planName" label="计划名称" min-width="180" />
       <el-table-column prop="academicYear" label="学年" width="140" />
       <el-table-column prop="term" label="学期" width="120" />
-      <el-table-column prop="studentQuota" label="名额" width="100" />
+      <el-table-column prop="remainingQuota" label="剩余名额" width="100">
+        <template #default="{ row }">
+          {{ row.remainingQuota ?? row.studentQuota }}
+        </template>
+      </el-table-column>
       <el-table-column prop="applyDeadline" label="申请截止时间" width="170" />
       <el-table-column prop="planStatus" label="状态" width="120">
         <template #default="{ row }">
-          <el-tag :type="planStatusTagType(row.planStatus, row.applyDeadline)">
-            {{ planStatusLabel(row.planStatus, row.applyDeadline) }}
+          <el-tag :type="planStatusTagType(row.planStatus, row.applyDeadline, row.remainingQuota)">
+            {{ planStatusLabel(row.planStatus, row.applyDeadline, row.remainingQuota) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -84,16 +88,26 @@ function isApplyOpen(applyDeadline?: string) {
   return new Date(applyDeadline).getTime() >= Date.now();
 }
 
-function planStatusTagType(planStatus?: string, applyDeadline?: string): '' | 'success' | 'warning' | 'info' {
+function isPlanFull(remainingQuota?: number) {
+  return typeof remainingQuota === 'number' && remainingQuota <= 0;
+}
+
+function planStatusTagType(planStatus?: string, applyDeadline?: string, remainingQuota?: number): '' | 'success' | 'warning' | 'info' | 'danger' {
   if (planStatus === 'PUBLISHED') {
-    return isApplyOpen(applyDeadline) ? 'success' : 'warning';
+    if (!isApplyOpen(applyDeadline)) {
+      return 'warning';
+    }
+    return isPlanFull(remainingQuota) ? 'danger' : 'success';
   }
   return 'info';
 }
 
-function planStatusLabel(planStatus?: string, applyDeadline?: string) {
+function planStatusLabel(planStatus?: string, applyDeadline?: string, remainingQuota?: number) {
   if (planStatus === 'PUBLISHED') {
-    return isApplyOpen(applyDeadline) ? '可申请' : '报名截止';
+    if (!isApplyOpen(applyDeadline)) {
+      return '报名截止';
+    }
+    return isPlanFull(remainingQuota) ? '名额已满' : '可申请';
   }
   if (planStatus === 'FINISHED') {
     return '已结束';

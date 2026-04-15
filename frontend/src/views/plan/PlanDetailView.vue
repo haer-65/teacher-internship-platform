@@ -15,7 +15,7 @@
         <el-descriptions-item label="计划名称">{{ detail.planName }}</el-descriptions-item>
         <el-descriptions-item label="学年">{{ detail.academicYear }}</el-descriptions-item>
         <el-descriptions-item label="学期">{{ detail.term }}</el-descriptions-item>
-        <el-descriptions-item label="学生名额">{{ detail.studentQuota }}</el-descriptions-item>
+        <el-descriptions-item label="剩余名额">{{ detail.remainingQuota ?? detail.studentQuota }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="statusTagType(detail.planStatus)">{{ statusLabel(detail.planStatus) }}</el-tag>
         </el-descriptions-item>
@@ -32,7 +32,11 @@
       <el-table :data="detail.planBases || []" border>
         <el-table-column prop="baseCode" label="基地编码" width="140" />
         <el-table-column prop="baseName" label="基地名称" min-width="200" />
-        <el-table-column prop="baseQuota" label="名额" width="120" />
+        <el-table-column prop="remainingQuota" label="剩余名额" width="120">
+          <template #default="{ row }">
+            {{ row.remainingQuota ?? row.baseQuota }}
+          </template>
+        </el-table-column>
         <el-table-column prop="sortNo" label="排序" width="100" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">

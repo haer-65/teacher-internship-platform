@@ -15,6 +15,7 @@ import com.teacher.internship.modules.plan.entity.BizMaterialType;
 import com.teacher.internship.modules.plan.mapper.BizMaterialTypeMapper;
 import com.teacher.internship.modules.score.vo.ScoreDetailSnapshotVO;
 import com.teacher.internship.modules.score.vo.ScoreMaterialDetailVO;
+import com.teacher.internship.modules.system.service.SystemParamService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -34,8 +35,10 @@ import java.util.stream.Collectors;
 @Service
 public class ScoreCalculationService {
 
+    private static final String PARAM_SCORE_DECIMAL_SCALE = "SCORE_DECIMAL_SCALE";
+    private static final int DEFAULT_SCORE_SCALE = 2;
     private static final BigDecimal HUNDRED = new BigDecimal("100");
-    private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(DEFAULT_SCORE_SCALE, RoundingMode.HALF_UP);
 
     private static final String ROLE_INNER_TEACHER = "INNER_TEACHER";
     private static final String ROLE_BASE_TEACHER = "BASE_TEACHER";
@@ -47,15 +50,18 @@ public class ScoreCalculationService {
     private final BizMaterialMapper materialMapper;
     private final BizMaterialVersionMapper materialVersionMapper;
     private final BizEvaluationMapper evaluationMapper;
+    private final SystemParamService paramService;
 
     public ScoreCalculationService(BizMaterialTypeMapper materialTypeMapper,
                                    BizMaterialMapper materialMapper,
                                    BizMaterialVersionMapper materialVersionMapper,
-                                   BizEvaluationMapper evaluationMapper) {
+                                   BizEvaluationMapper evaluationMapper,
+                                   SystemParamService paramService) {
         this.materialTypeMapper = materialTypeMapper;
         this.materialMapper = materialMapper;
         this.materialVersionMapper = materialVersionMapper;
         this.evaluationMapper = evaluationMapper;
+        this.paramService = paramService;
     }
 
     public ScoreDetailSnapshotVO calculate(BizInternshipPlan plan, BizAssignment assignment) {
@@ -253,7 +259,7 @@ public class ScoreCalculationService {
         if (score == null) {
             return ZERO;
         }
-        return score.setScale(2, RoundingMode.HALF_UP);
+        return score.setScale(resolveScoreScale(), RoundingMode.HALF_UP);
     }
 
     private BigDecimal clampScore(BigDecimal score) {
@@ -262,9 +268,14 @@ public class ScoreCalculationService {
             return ZERO;
         }
         if (safe.compareTo(HUNDRED) > 0) {
-            return HUNDRED.setScale(2, RoundingMode.HALF_UP);
+            return HUNDRED.setScale(resolveScoreScale(), RoundingMode.HALF_UP);
         }
         return normalizeScore(safe);
+    }
+
+    private int resolveScoreScale() {
+        int configuredScale = paramService.getIntValue(PARAM_SCORE_DECIMAL_SCALE, DEFAULT_SCORE_SCALE);
+        return Math.max(configuredScale, 0);
     }
 
     private String normalizeCode(String code) {

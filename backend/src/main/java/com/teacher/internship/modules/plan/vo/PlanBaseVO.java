@@ -17,6 +17,7 @@ public class PlanBaseVO {
     private String baseCode;
     private String baseName;
     private Integer baseQuota;
+    private Integer remainingQuota;
     private Integer sortNo;
     private String status;
     private String remark;
@@ -67,6 +68,14 @@ public class PlanBaseVO {
 
     public void setBaseQuota(Integer baseQuota) {
         this.baseQuota = baseQuota;
+    }
+
+    public Integer getRemainingQuota() {
+        return remainingQuota;
+    }
+
+    public void setRemainingQuota(Integer remainingQuota) {
+        this.remainingQuota = remainingQuota;
     }
 
     public Integer getSortNo() {

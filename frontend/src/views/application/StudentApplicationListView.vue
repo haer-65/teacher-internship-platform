@@ -18,9 +18,12 @@
               <div class="plan-card__title">{{ plan.planName }}</div>
               <div class="plan-card__meta">{{ plan.planCode }} / {{ plan.academicYear }} / {{ plan.term }}</div>
             </div>
-            <el-tag type="success">可申请</el-tag>
+            <el-tag :type="hasPlanRemainingQuota(plan) ? 'success' : 'warning'">
+              {{ hasPlanRemainingQuota(plan) ? '可申请' : '名额已满' }}
+            </el-tag>
           </div>
           <div class="plan-card__deadline">申请截止：{{ plan.applyDeadline }}</div>
+          <div class="plan-card__quota">剩余名额：{{ getPlanRemainingQuota(plan) }}</div>
           <div class="plan-card__bases">
             <span v-for="base in plan.planBases.slice(0, 3)" :key="String(base.baseId)" class="base-pill">
               {{ base.baseName }}
@@ -29,7 +32,7 @@
           </div>
           <div class="plan-card__actions">
             <el-button plain @click="goPlanDetail(plan.id)">计划详情</el-button>
-            <el-button type="primary" @click="handleCreate(plan)">填写申请</el-button>
+            <el-button type="primary" :disabled="!hasPlanRemainingQuota(plan)" @click="handleCreate(plan)">填写申请</el-button>
           </div>
         </div>
       </div>
@@ -171,6 +174,19 @@ function hasSubmittedApplication(plan: StudentAvailablePlanItem) {
   return Boolean(plan.applicationId && plan.applicationStatus && plan.applicationStatus !== 'WITHDRAWN');
 }
 
+function getPlanRemainingQuota(plan: StudentAvailablePlanItem) {
+  return plan.planBases.reduce((sum, base) => {
+    if (typeof base.remainingQuota === 'number') {
+      return sum + base.remainingQuota;
+    }
+    return sum + (typeof base.baseQuota === 'number' ? base.baseQuota : 0);
+  }, 0);
+}
+
+function hasPlanRemainingQuota(plan: StudentAvailablePlanItem) {
+  return getPlanRemainingQuota(plan) > 0;
+}
+
 async function fetchAvailablePlans() {
   const resp = await queryStudentAvailablePlansApi();
   availablePlans.value = resp.data || [];
@@ -222,6 +238,10 @@ function goCreate(planId: IdValue) {
 function handleCreate(plan: StudentAvailablePlanItem) {
   if (hasSubmittedApplication(plan)) {
     ElMessage.warning('你已经提交过该计划的申请，请到“我的申请”中查看或撤回后再重新申请。');
+    return;
+  }
+  if (!hasPlanRemainingQuota(plan)) {
+    ElMessage.warning('该计划名额已满，请选择其他计划。');
     return;
   }
   goCreate(plan.id);
@@ -301,6 +321,13 @@ onMounted(async () => {
   margin-top: 12px;
   color: #475569;
   font-size: 14px;
+}
+
+.plan-card__quota {
+  margin-top: 8px;
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .plan-card__bases {

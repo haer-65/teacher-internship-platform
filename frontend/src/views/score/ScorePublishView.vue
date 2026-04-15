@@ -108,6 +108,23 @@ async function handlePreview() {
   }
 }
 
+function applyPublishedPreview(publishedTime?: string) {
+  if (!previewData.value) {
+    return;
+  }
+  previewData.value = {
+    ...previewData.value,
+    scorePublishStatus: 'PUBLISHED',
+    canPublish: false,
+    publishBlockedReason: undefined,
+    records: previewData.value.records.map((item) => ({
+      ...item,
+      status: 'PUBLISHED',
+      publishedTime: publishedTime || item.publishedTime
+    }))
+  };
+}
+
 async function handlePublish() {
   const planId = normalizeRouteId(form.planId);
   if (!planId) {
@@ -118,7 +135,7 @@ async function handlePublish() {
   try {
     const resp = await publishScorePlanApi(planId);
     ElMessage.success(`已发布 ${resp.data.publishedCount} 条成绩单`);
-    handlePreview();
+    applyPublishedPreview(resp.data.publishedTime);
   } finally {
     publishing.value = false;
   }
